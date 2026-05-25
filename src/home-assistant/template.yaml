@@ -1,0 +1,14 @@
+- switch:
+    - name: "当贝投影仪"
+      unique_id: dangbei_projector_switch
+      state: "{{ is_state('sensor.dangbei_state', 'ON') }}"
+      turn_on:
+        action: rest_command.dangbei_power_on
+      turn_off:
+        action: rest_command.dangbei_power_off
+      icon: >-
+        {% if is_state('sensor.dangbei_state', 'ON') %}
+          mdi:projector
+        {% else %}
+          mdi:projector-off
+        {% endif %}

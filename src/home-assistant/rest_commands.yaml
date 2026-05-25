@@ -1,0 +1,18 @@
+dangbei_power_on:
+  url: "http://10.0.0.101/power_on"
+  method: get
+dangbei_power_off:
+  url: "http://10.0.0.101/power_off"
+  method: get
+dangbei_vol_up:
+  url: "http://10.0.0.101/vol_up"
+  method: get
+dangbei_vol_down:
+  url: "http://10.0.0.101/vol_down"
+  method: get
+dangbei_mute:
+  url: "http://10.0.0.101/mute"
+  method: get
+dangbei_play_pause:
+  url: "http://10.0.0.101/play_pause"
+  method: get

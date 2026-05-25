@@ -1,0 +1,6 @@
+- platform: rest
+  name: "Dangbei State"
+  resource: "http://10.0.0.101/state"
+  method: GET
+  value_template: '{{ value_json.state }}'
+  scan_interval: 5

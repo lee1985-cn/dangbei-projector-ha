@@ -1,0 +1,32 @@
+alias: 打开电脑
+description: ""
+triggers:
+  - entity_id: sensor.xiaomi_lx06_ac65_conversation
+    trigger: state
+conditions:
+  - condition: template
+    value_template: >
+      {# 1. 获取语音内容 #} {% set c = state_attr(trigger.entity_id, 'content') |
+      string %}
+
+      {# 2. 获取属性里的原始时间戳字符串 #} {% set raw_ts = state_attr(trigger.entity_id,
+      'timestamp') %}
+
+      {# 3. 转化为秒。注意：as_timestamp 可以直接解析 ISO 格式字符串 #} {% set msg_ts =
+      as_timestamp(raw_ts, default=0) %}
+
+      {# 4. 逻辑判断：内容匹配 + (当前时间 - 说话时间) < 40秒 #} {# 建议设为 30-40秒，因为云端同步有延迟
+      #} {{ 
+         '打开电脑' in c 
+         and msg_ts > 0
+         and (as_timestamp(now()) - msg_ts) < 40 
+      }}
+  - condition: state
+    entity_id: binary_sensor.qemu_windows11_100_status
+    state:
+      - "off"
+actions:
+  - target:
+      entity_id: button.qemu_windows11_100_start
+    action: button.press
+mode: single
