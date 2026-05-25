@@ -73,7 +73,7 @@ template.yaml: 组合为一个完美的 UI Switch 实体。
 🎙️ 进阶玩法：接入小爱同学语音控制
 通过 Home Assistant 的自动化脚本，我们可以将该实体暴露给智能音箱，实现“小爱同学，打开投影仪”、“小爱同学，投影仪大点声”等自然语义控制。
 
-👉 详细小爱同学接入教程与思路复盘请参考我的博客文章
+[👉 详细小爱同学接入教程与思路复盘请参考我的博客文章](https://blog.lida1985.eu.org/archives/xiao-ai-tong-xue-home-assistant-yi-jian-yu-yin-kong-zhi-pve-su-zhu-ji-ji-xu-ni-ji-kai-guan-ji)
 
 📜 许可证 (License)
 本项目基于 MIT License 开源，欢迎提交 PR 或在 Issue 中讨论！
