@@ -11,10 +11,10 @@
 const char* ssid = "你的wifi名字";
 const char* password = "你的wifi密码";
 
-// 【核心补丁 1】统一蓝牙名称，防止配对信息因名称不一致而失效
 const char* BLE_NAME = "Dangbei_ESP32"; 
+const uint32_t MAGIC_WAKEUP = 0xAABBCCDD;
+const unsigned long WIFI_TIMEOUT_MS = 15000;
 
-// 跨软重启保持状态 (针对 ESP32-C3 的特殊防擦除宏)
 RTC_NOINIT_ATTR uint32_t boot_mode_magic; 
 
 WebServer server(80);
@@ -31,28 +31,31 @@ const uint8_t pkt3[] = {0x02,0x01,0x05,0x05,0x02,0x0F,0x18,0x12,0x18,0x0E,0xFF,0
 // 发送广播包辅助函数 (已修复 C++ 类型转换报错)
 void sendRawAdv(NimBLEAdvertising* adv, const uint8_t* data, size_t len) {
     adv->stop();
-    delay(10);
     NimBLEAdvertisementData advData;
-    advData.addData(std::string((char*)data, len));
+    advData.addData(std::string(reinterpret_cast<const char*>(data), len));
     adv->setAdvertisementData(advData);
     adv->start();
 }
 
-// ================= 模式 A：魔法开机重放 =================
+void broadcastPacket(NimBLEAdvertising* adv, const uint8_t* pkt, size_t len, unsigned long durationMs) {
+    unsigned long t = millis();
+    while (millis() - t < durationMs) {
+        sendRawAdv(adv, pkt, len);
+        delay(200);
+    }
+}
+
 void runWakeupBeaconMode() {
     Serial.println("\n[MODE A] 发射魔法唤醒包...");
-    NimBLEDevice::init(BLE_NAME); // 使用统一名称
+    NimBLEDevice::init(BLE_NAME);
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
     
-    unsigned long t = millis();
-    while(millis() - t < 1500) { sendRawAdv(adv, pkt1, sizeof(pkt1)); delay(200); }
-    t = millis();
-    while(millis() - t < 1500) { sendRawAdv(adv, pkt2, sizeof(pkt2)); delay(200); }
-    t = millis();
-    while(millis() - t < 1500) { sendRawAdv(adv, pkt3, sizeof(pkt3)); delay(200); }
+    broadcastPacket(adv, pkt1, sizeof(pkt1), 1500);
+    broadcastPacket(adv, pkt2, sizeof(pkt2), 1500);
+    broadcastPacket(adv, pkt3, sizeof(pkt3), 1500);
     
     adv->stop();
-    boot_mode_magic = 0; 
+    boot_mode_magic = 0;
     delay(100);
     ESP.restart();
 }
@@ -71,7 +74,7 @@ void setupHttpEndpoints() {
             server.send(200, "application/json", "{\"status\":\"already_on\"}");
         } else {
             server.send(200, "application/json", "{\"status\":\"waking_up\"}");
-            boot_mode_magic = 0xAABBCCDD;
+            boot_mode_magic = MAGIC_WAKEUP;
             delay(100);
             ESP.restart();
         }
@@ -101,6 +104,7 @@ void setupHttpEndpoints() {
 
     // 预留多媒体接口
     server.on("/play_pause", HTTP_GET, []() {
+        server.sendHeader("Access-Control-Allow-Origin", "*");
         if (bleKeyboard && bleKeyboard->isConnected()) bleKeyboard->write(KEY_MEDIA_PLAY_PAUSE);
         server.send(200, "application/json", "{\"status\":\"ok\"}");
     });
@@ -126,12 +130,20 @@ void setupHttpEndpoints() {
 
 void runNormalControlMode() {
     Serial.println("\n[MODE B] 进入常态控制模式...");
-    bleKeyboard = new BleKeyboard(BLE_NAME, "Espressif", 100); // 使用统一名称
+    bleKeyboard = new BleKeyboard(BLE_NAME, "Espressif", 100);
     bleKeyboard->begin();
 
     WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-    Serial.println("\nWiFi OK! IP: " + WiFi.localIP().toString());
+    unsigned long wifiStart = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < WIFI_TIMEOUT_MS) {
+        delay(500);
+        Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi OK! IP: " + WiFi.localIP().toString());
+    } else {
+        Serial.println("\nWiFi 连接超时，继续启动...");
+    }
 
     setupHttpEndpoints();
     server.begin();
@@ -150,7 +162,7 @@ void setup() {
     esp_reset_reason_t reason = esp_reset_reason();
     if (reason != ESP_RST_SW) { boot_mode_magic = 0; } 
 
-    if (boot_mode_magic == 0xAABBCCDD) {
+    if (boot_mode_magic == MAGIC_WAKEUP) {
         runWakeupBeaconMode();
     } else {
         runNormalControlMode();
@@ -158,5 +170,5 @@ void setup() {
 }
 
 void loop() {
-    if (boot_mode_magic != 0xAABBCCDD) server.handleClient();
+    if (boot_mode_magic != MAGIC_WAKEUP) server.handleClient();
 }
