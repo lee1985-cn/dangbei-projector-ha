@@ -20,7 +20,11 @@ RTC_NOINIT_ATTR uint32_t boot_mode_magic;
 WebServer server(80);
 BleKeyboard* bleKeyboard = nullptr;
 
-// 【核心补丁 2】使用 0x04 掩码触发你修改过的库文件电源键 (Bit 2)
+// 【核心补丁 2】电源键掩码 = bit 2
+// 依赖对 ESP32-BLE-Keyboard 库 BleKeyboard.cpp 的修改：
+//   第 80 行  USAGE(1), 0xB7  (Stop, bit 2)  ->  USAGE(1), 0x30  (Power)
+// 库的媒体键位序：bit0=Next  bit1=Prev  bit2=Stop  bit3=PlayPause  bit7=Mail
+// 所以这里必须用 0x04（bit 2），不要改成 bit 7（0x80）的 Mail，否则关机失效。
 const MediaKeyReport KEY_PROJ_POWER = {0x04, 0x00};
 
 // 经过实测 100% 能够唤醒当贝主板的魔法数据包
