@@ -36,13 +36,26 @@ For detailed installation and Home Assistant YAML configurations, please refer t
 4. **防吞键与掩码修复**：修复了底层库的位掩码冲突（解决关机变音量加的问题），并内置唤醒链路的激活序列，确保关机指令 100% 触达。
 
 ### 🛠️ 准备工作：必须的外科手术级修改
-本项目依赖 `ESP32-BLE-Keyboard` 库。在烧录代码前，**必须**修改该库底层的描述符，否则无法实现关机：
+本项目依赖 `ESP32-BLE-Keyboard` 库。在烧录代码前，**必须**修改该库底层的 HID 描述符，否则无法实现关机：
+
 1. 打开电脑上的库文件：`Documents\Arduino\libraries\ESP32-BLE-Keyboard\BleKeyboard.cpp`
-2. 找到约 150 行的 `_hidReportDescriptor` 数组。
-3. 将无用的邮件键 `0x09, 0x8A, // Usage (AL Email Reader)` 修改为标准电源键：
+2. 找到 `_hidReportDescriptor[]` 数组（在文件**第 33 行**附近开始），定位到 **第 80 行** 的媒体键区：
    ```cpp
-   0x09, 0x30,          //   Usage (Power)
+   USAGE(1),           0xB7,          //   USAGE (Stop)                ; bit 2: 4
+   ```
+3. 把 `0xB7`（Stop）改成 `0x30`（Power）：
+   ```cpp
+   USAGE(1),           0x30,          //   USAGE (Power)
+   ```
 4. 保存文件。
+
+> **为什么是 bit 2 而不是 bit 7**
+> `main.cpp` 里 `const MediaKeyReport KEY_PROJ_POWER = {0x04, 0x00};` 用的是 **bit 2**（0x04）。
+> 在库的媒体键描述符里，bit 0 = Scan Next Track、bit 1 = Scan Previous Track、**bit 2 = Stop (0xB7)**、bit 3 = Play/Pause、bit 7 = Mail (0x8A)。
+> 所以必须改 **bit 2 的 Stop**，改成 bit 7 的 Mail 会导致关机键失效。
+>
+> 改错位置的典型症状：按关机变成「音量 +」或者完全没反应。
+
 
 🚀 部署指南
 1. 固件烧录
@@ -62,13 +75,17 @@ For detailed installation and Home Assistant YAML configurations, please refer t
 重新搜索并连接 Dangbei_ESP32。完成这一次配对后，ESP32 即可随意断电移动，永久不掉签。
 
 3. Home Assistant 配置
-将 ESP32 在路由器中绑定静态 IP。然后将本项目 home-assistant/ 目录下的配置文件按模块添加到你的 HA 中：
+将 ESP32 在路由器中绑定静态 IP（本项目示例使用 `10.0.0.54`，请改成你自己的）。然后将本项目 `src/home-assistant/` 目录下的配置文件按模块添加到你的 HA 中：
 
-rest_commands.yaml: 定义所有的动作接口（开机、关机、音量等）。
+`rest_commands.yaml`: 定义所有的动作接口（开机、关机、音量等）。
 
-sensor.yaml: 通过 HTTP 轮询获取真实的设备连接状态。
+`sensor.yaml`: 通过 HTTP 轮询获取真实的设备连接状态。
 
-template.yaml: 组合为一个完美的 UI Switch 实体。
+`template.yaml`: 组合为一个完美的 UI Switch 实体。
+
+`automations.yaml`: 可选的自动化示例。
+
+> ⚠️ 这几个 YAML 里的 IP 需要替换成你实际的 ESP32 地址，否则实体全部不可用。
 
 🎙️ 进阶玩法：接入小爱同学语音控制
 通过 Home Assistant 的自动化脚本，我们可以将该实体暴露给智能音箱，实现“小爱同学，打开投影仪”、“小爱同学，投影仪大点声”等自然语义控制。
