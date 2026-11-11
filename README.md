@@ -6,6 +6,9 @@
 
 [🇺🇸 English](#english) | [🇨🇳 中文说明](#chinese)
 
+> **➡️ 新项目：** 本项目的投影仪部分已被 **[dangbei-netlea-hub](https://github.com/lee1985-cn/dangbei-netlea-hub)** 完整涵盖 —— 一块 ESP32-C3 同时控制投影仪 **和** 尼特利变频过滤桶，并带预编译固件可直接刷。
+> 如果你只有投影仪、不想折腾编译，直接用那边的 Release 更省事；本项目保留作历史版本与补丁说明。
+
 <a name="english"></a>
 ## 🇺🇸 English Overview
 
